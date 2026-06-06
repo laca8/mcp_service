@@ -1,0 +1,8 @@
+ollama pull qwen3:4b 
+ollama run qwen3:4b
+
+
+npm install express cors
+npm install @modelcontextprotocol/sdk
+npm install ollama
+npm install -D typescript ts-node nodemon
