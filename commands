@@ -6,3 +6,6 @@ npm install express cors
 npm install @modelcontextprotocol/sdk
 npm install ollama
 npm install -D typescript ts-node nodemon
+
+
+curl http://localhost:11434/api/tags => all models

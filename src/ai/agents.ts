@@ -1,35 +1,58 @@
 import { Ollama } from "ollama";
 import { tools, get_users } from "./tools.js";
 
-const ollama = new Ollama();
+const ollama = new Ollama({ host: "http://localhost:11434" });
+
+const MODEL = "qwen3:4b";
 
 export async function ask(question: string) {
-    // Step 1: ابعت السؤال للـ AI مع الـ tools
-    const response = await ollama.chat({
-        model: "qwen3:4b",
-        messages: [{ role: "user", content: question }],
-        tools,
-    });
+    try {
+        console.log("1. Sending question to AI...");
 
-    const msg = response.message;
+        // stream: true عشان ميتقطعش بسبب timeout
+        const stream = await ollama.chat({
+            model: MODEL,
+            messages: [{ role: "user", content: question }],
+            tools,
+            think: false,
+            stream: true,
+        });
 
-    // Step 2: لو الـ AI مطلبش tool → رد مباشرة
-    if (!msg.tool_calls?.length) return msg.content;
+        // استنى لحد ما يخلص
+        let msg: any;
+        for await (const chunk of stream) {
+            msg = chunk.message;
+        }
 
-    // Step 3: نفّذ الـ tool اللي طلبه الـ AI
-    const call = msg.tool_calls[0];
-    const args = call.function.arguments as { limit?: number };
-    const data = await get_users(args.limit);
+        console.log("2. AI response:", JSON.stringify(msg, null, 2));
 
-    // Step 4: ابعت النتيجة للـ AI عشان يصيغ الرد
-    const final = await ollama.chat({
-        model: "qwen3:8b",
-        messages: [
-            { role: "user", content: question },
-            msg,
-            { role: "tool", content: JSON.stringify(data) },
-        ],
-    });
+        if (!msg.tool_calls?.length) return msg.content;
 
-    return final.message.content;
+        console.log("3. Tool called:", msg.tool_calls[0].function.name);
+        const args = msg.tool_calls[0].function.arguments as { limit?: number };
+        const data = await get_users(args.limit);
+        console.log("4. Got", data.length, "users from DB");
+
+        const finalStream = await ollama.chat({
+            model: MODEL,
+            messages: [
+                { role: "user", content: question },
+                msg,
+                { role: "tool", content: JSON.stringify(data) },
+            ],
+            stream: true,
+        });
+
+        let finalMsg: any;
+        for await (const chunk of finalStream) {
+            finalMsg = chunk.message;
+        }
+
+        console.log("5. Final:", finalMsg.content);
+        return finalMsg.content;
+
+    } catch (error) {
+        console.error("ERROR:", error);
+        return "An error occurred.";
+    }
 }

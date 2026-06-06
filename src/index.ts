@@ -6,8 +6,13 @@ app.use(express.json());
 
 app.post("/chat", async (req, res) => {
     const { question } = req.body;
+    console.log(question);
+
     const answer = await ask(question);
+    console.log(answer);
     res.json({ answer });
 });
 
-app.listen(3000, () => console.log("http://localhost:3000"));
+app.listen(3000, () => {
+    console.log("Server running on http://localhost:3000");
+});
